@@ -11,6 +11,9 @@ public struct HitLocation
 public class EchoLocator : MonoBehaviour
 {
 	[SerializeField]
+	public LayerMask ignoreRaycastLayer;
+
+	[SerializeField]
 	private int amountOfRays = 32;
 
 	public GameObject debugMarkerPrefab;
@@ -75,12 +78,12 @@ public class EchoLocator : MonoBehaviour
 			uIMarkerGameObject.transform.SetParent(transform);
 
 			angle = i * (360f / amountOfRays);
-			direction = Quaternion.Euler(0, 0, angle) * transform.up;
+			direction = Quaternion.Euler(0, 0, -angle) * transform.up;
 
 			uIMarkerGameObject.transform.localPosition = ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
 
 			UIMarker uIMarker = uIMarkerGameObject.GetComponent<UIMarker>();
-			uIMarker.ShowMarker(false);
+			//uIMarker.ShowMarker(false);
 
 			uIMarkers[i] = uIMarker;
 		}
@@ -90,7 +93,6 @@ public class EchoLocator : MonoBehaviour
 	private float currentHitDistanceThisFrame;
 	private bool currentDirectionRayHitThisFrame;
 	float angle;
-
 	private IEnumerator RayCastInAllDirections()
 	{
 		while (true)
@@ -110,17 +112,13 @@ public class EchoLocator : MonoBehaviour
 						if (showRayDebugLines)
 							Debug.DrawLine(t.position, t.position + (direction * maxRayDistance), Color.green);
 
-						if (Physics.Raycast(t.position, direction, out hit, maxRayDistance))
+						if (Physics.Raycast(t.position, direction, out hit, maxRayDistance, ~ignoreRaycastLayer))
 						{
 							if (hitLocations[i].Hit.point == null || hit.distance < currentHitDistanceThisFrame)
 							{
 								currentDirectionRayHitThisFrame = true;
 								currentHitDistanceThisFrame = hit.distance;
-
 								hitLocations[i].Hit = hit;
-								hitLocations[i].Active = true;
-
-								hitLocations[i].debugMarker.gameObject.SetActive(true);
 								hitLocations[i].debugMarker.position = hit.point;
 							}
 						}
@@ -129,12 +127,19 @@ public class EchoLocator : MonoBehaviour
 					if (!currentDirectionRayHitThisFrame)
 					{
 						hitLocations[i].Active = false;
-						hitLocations[i].debugMarker.gameObject.SetActive(false);
 						uIMarkers[i].ShowMarker(false);
+
+						if (showHitSpheres)
+							hitLocations[i].debugMarker.gameObject.SetActive(false);
+
 					}
 					else
 					{
+						hitLocations[i].Active = true;
 						uIMarkers[i].ShowMarker(true);
+
+						if (showHitSpheres)
+							hitLocations[i].debugMarker.gameObject.SetActive(true);
 					}
 				}
 			}
