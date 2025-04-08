@@ -1,19 +1,53 @@
 using System.Collections;
 using UnityEngine;
 
+public struct HitLocation
+{
+	public bool? Active;
+	public RaycastHit Hit;
+	public Transform debugMarker;
+}
+
 public class EchoLocator : MonoBehaviour
 {
 	[SerializeField]
-	private int amountOfRays = 16;
+	private int amountOfRays = 32;
 
-	Vector3 closestHit = Vector3.positiveInfinity;
-	RaycastHit hit;
+	public GameObject debugMarkerPrefab;
+
+	[SerializeField]
+	private float maxRayDistance = 20f;
+
+	[SerializeField]
+	private Transform[] rayLocations;
+
+	private RaycastHit hit;
+
+	public bool castTheRays = true;
+	public bool showRayDebugLines = true;
+	public bool showHitSpheres = true;
+
+	private HitLocation[] hitLocations;
 
 	private void Start()
 	{
+		hitLocations = new HitLocation[amountOfRays];
+
+		for (int i = 0; i < hitLocations.Length; i++)
+		{
+			HitLocation hitLocation = new HitLocation
+			{
+				Active = false,
+				Hit = new RaycastHit(),
+				debugMarker = Instantiate(debugMarkerPrefab, Vector3.zero, Quaternion.identity).transform
+			};
+
+			hitLocations[i] = hitLocation;
+			hitLocations[i].debugMarker.gameObject.SetActive(false);
+		}
+
 		// Start the coroutine
 		StartCoroutine(RayCastInAllDirections());
-
 	}
 
 	// Update is called once per frame
@@ -22,34 +56,54 @@ public class EchoLocator : MonoBehaviour
 
 	}
 
+	private Vector3 direction;
+	private float currentHitDistanceThisFrame;
+	private bool currentDirectionRayHitThisFrame;
 	private IEnumerator RayCastInAllDirections()
 	{
 		while (true)
 		{
-			Debug.Log("Raycasting in all directions...");
-
-			for (int i = 0; i < amountOfRays; i++)
+			if (castTheRays)
 			{
-				float angle = i * (360f / amountOfRays);
-
-				Vector3 direction = Quaternion.Euler(0, angle, 0) * transform.forward;
-
-
-				if (Physics.Raycast(transform.position, direction, out hit))
+				for (int i = 0; i < amountOfRays; i++)
 				{
-					if (hit.collider == null || hit.distance < Vector3.Distance(transform.position, closestHit))
+					float angle = i * (360f / amountOfRays);
+
+					direction = Quaternion.Euler(0, angle, 0) * transform.forward;
+
+					currentDirectionRayHitThisFrame = false;
+					currentHitDistanceThisFrame = Mathf.Infinity;
+
+					foreach (Transform t in rayLocations)
 					{
-						closestHit = hit.point;
+						if (showRayDebugLines)
+							Debug.DrawLine(t.position, t.position + (direction * maxRayDistance), Color.green);
+
+						if (Physics.Raycast(t.position, direction, out hit, maxRayDistance))
+						{
+							if (hitLocations[i].Hit.point == null || hit.distance < currentHitDistanceThisFrame)
+							{
+								currentDirectionRayHitThisFrame = true;
+								currentHitDistanceThisFrame = hit.distance;
+
+								hitLocations[i].Hit = hit;
+								hitLocations[i].Active = true;
+
+								hitLocations[i].debugMarker.gameObject.SetActive(true);
+								hitLocations[i].debugMarker.position = hit.point;
+							}
+						}
+					}
+
+					if (!currentDirectionRayHitThisFrame)
+					{
+						hitLocations[i].Active = false;
+						hitLocations[i].debugMarker.gameObject.SetActive(false);
 					}
 				}
 			}
 
-			if (closestHit != null)
-			{
-				Debug.DrawLine(transform.position, closestHit, Color.red);
-			}
-
-			yield return new WaitForSeconds(0.1f);
+			yield return null;
 		}
 	}
 }
