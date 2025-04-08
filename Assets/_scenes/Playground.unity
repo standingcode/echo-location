@@ -189,6 +189,11 @@ ReflectionProbe:
   m_UseOcclusionCulling: 1
   m_Importance: 1
   m_CustomBakedTexture: {fileID: 0}
+--- !u!4 &552123222 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2738122957836278800, guid: 27bd82b45197fa143ba6bda3b69b9af5, type: 3}
+  m_PrefabInstance: {fileID: 2758889539836547823}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &746329221
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -636,13 +641,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eb45a3a541580f9469b2ace686296297, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  amountOfRays: 64
+  amountOfRays: 90
   debugMarkerPrefab: {fileID: 7991492249533305250, guid: 28141a07fb4a3d94ba29b8f6580c14a5, type: 3}
+  UIMarkerPrefab: {fileID: 8721933935825478680, guid: 1d0d0d5519eda4e46bf42de5c7f0ee30, type: 3}
   maxRayDistance: 10
   rayLocations:
   - {fileID: 1254665124}
   - {fileID: 409812153}
   - {fileID: 1151587705}
+  playerTransform: {fileID: 552123222}
   castTheRays: 1
   showRayDebugLines: 1
   showHitSpheres: 1
