@@ -57,7 +57,7 @@ MonoBehaviour:
   amountOfRays: 90
   debugMarkerPrefab: {fileID: 7991492249533305250, guid: 28141a07fb4a3d94ba29b8f6580c14a5, type: 3}
   UIMarkerPrefab: {fileID: 8721933935825478680, guid: 1d0d0d5519eda4e46bf42de5c7f0ee30, type: 3}
-  maxRayDistance: 10
+  maxRayDistance: 4
   rayLocations:
   - {fileID: 0}
   - {fileID: 0}
