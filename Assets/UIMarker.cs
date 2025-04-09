@@ -6,8 +6,8 @@ public class UIMarker : MonoBehaviour
 	[SerializeField]
 	private Image markerImage;
 
-	public void ShowMarker(bool show)
+	public void SetMarkerAlpha(float alphaValue)
 	{
-		markerImage.gameObject.SetActive(show);
+		markerImage.color = new Color(markerImage.color.r, markerImage.color.g, markerImage.color.b, Mathf.Clamp01(alphaValue));
 	}
 }

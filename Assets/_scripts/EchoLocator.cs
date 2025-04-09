@@ -83,7 +83,7 @@ public class EchoLocator : MonoBehaviour
 			uIMarkerGameObject.transform.localPosition = ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
 
 			UIMarker uIMarker = uIMarkerGameObject.GetComponent<UIMarker>();
-			//uIMarker.ShowMarker(false);
+			uIMarker.SetMarkerAlpha(0f);
 
 			uIMarkers[i] = uIMarker;
 		}
@@ -127,7 +127,7 @@ public class EchoLocator : MonoBehaviour
 					if (!currentDirectionRayHitThisFrame)
 					{
 						hitLocations[i].Active = false;
-						uIMarkers[i].ShowMarker(false);
+						uIMarkers[i].SetMarkerAlpha(0f);
 
 						if (showHitSpheres)
 							hitLocations[i].debugMarker.gameObject.SetActive(false);
@@ -136,7 +136,7 @@ public class EchoLocator : MonoBehaviour
 					else
 					{
 						hitLocations[i].Active = true;
-						uIMarkers[i].ShowMarker(true);
+						uIMarkers[i].SetMarkerAlpha(1 - (hitLocations[i].Hit.distance / maxRayDistance));
 
 						if (showHitSpheres)
 							hitLocations[i].debugMarker.gameObject.SetActive(true);
