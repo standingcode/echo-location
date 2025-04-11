@@ -535,6 +535,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 552123222}
     - target: {fileID: 2196656642716228404, guid: d11b6b38429ed1d4f9529ea5bfe2f2a0, type: 3}
+      propertyPath: showRayDebugLines
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2196656642716228404, guid: d11b6b38429ed1d4f9529ea5bfe2f2a0, type: 3}
       propertyPath: 'rayLocations.Array.data[0]'
       value: 
       objectReference: {fileID: 1254665124}
