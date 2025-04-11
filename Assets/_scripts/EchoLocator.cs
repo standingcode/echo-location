@@ -5,7 +5,6 @@ public struct HitLocation
 {
 	public bool? Active;
 	public RaycastHit Hit;
-	public Transform debugMarker;
 }
 
 public class EchoLocator : MonoBehaviour
@@ -15,8 +14,6 @@ public class EchoLocator : MonoBehaviour
 
 	[SerializeField]
 	private int amountOfRays = 32;
-
-	public GameObject debugMarkerPrefab;
 
 	[SerializeField]
 	private GameObject UIMarkerPrefab;
@@ -30,11 +27,8 @@ public class EchoLocator : MonoBehaviour
 	[SerializeField]
 	private Transform playerTransform;
 
-	private RaycastHit hit;
-
 	public bool castTheRays = true;
 	public bool showRayDebugLines = true;
-	public bool showHitSpheres = true;
 
 	private HitLocation[] hitLocations;
 	private UIMarker[] uIMarkers;
@@ -58,13 +52,10 @@ public class EchoLocator : MonoBehaviour
 			{
 				Active = false,
 				Hit = new RaycastHit(),
-				debugMarker = Instantiate(debugMarkerPrefab, Vector3.zero, Quaternion.identity).transform
 			};
 
 			hitLocations[i] = hitLocation;
-			hitLocations[i].debugMarker.gameObject.SetActive(false);
 		}
-
 	}
 
 	private void GenerateUI()
@@ -74,25 +65,26 @@ public class EchoLocator : MonoBehaviour
 		// Instantiate a ui object and add as a child to this transform
 		for (int i = 0; i < hitLocations.Length; i++)
 		{
-			GameObject uIMarkerGameObject = Instantiate(UIMarkerPrefab, Vector3.zero, Quaternion.identity);
-			uIMarkerGameObject.transform.SetParent(transform);
-
-			angle = i * (360f / amountOfRays);
-			direction = Quaternion.Euler(0, 0, -angle) * transform.up;
-
-			uIMarkerGameObject.transform.localPosition = ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
-
-			UIMarker uIMarker = uIMarkerGameObject.GetComponent<UIMarker>();
-			uIMarker.SetMarkerAlpha(0f);
-
-			uIMarkers[i] = uIMarker;
+			GenerateUIMarker(i);
 		}
 	}
 
-	private Vector3 direction;
-	private float currentHitDistanceThisFrame;
-	private bool currentDirectionRayHitThisFrame;
-	float angle;
+	private void GenerateUIMarker(int i)
+	{
+		GameObject uIMarkerGameObject = Instantiate(UIMarkerPrefab, Vector3.zero, Quaternion.identity);
+		uIMarkerGameObject.transform.SetParent(transform);
+
+		float angle = i * (360f / amountOfRays);
+		Vector3 direction = Quaternion.Euler(0, 0, -angle) * transform.up;
+
+		uIMarkerGameObject.transform.localPosition = ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
+
+		UIMarker uIMarker = uIMarkerGameObject.GetComponent<UIMarker>();
+		uIMarker.SetMarkerAlpha(0f);
+
+		uIMarkers[i] = uIMarker;
+	}
+
 	private IEnumerator RayCastInAllDirections()
 	{
 		while (true)
@@ -101,50 +93,58 @@ public class EchoLocator : MonoBehaviour
 			{
 				for (int i = 0; i < amountOfRays; i++)
 				{
-					angle = i * (360f / amountOfRays);
-					direction = Quaternion.Euler(0, angle, 0) * playerTransform.forward;
+					float angle = i * (360f / amountOfRays);
+					Vector3 direction = Quaternion.Euler(0, angle, 0) * playerTransform.forward;
 
-					currentDirectionRayHitThisFrame = false;
-					currentHitDistanceThisFrame = Mathf.Infinity;
+					float? shortestDistanceHitThisFrame = CastRaysForDirection(i, direction);
 
-					foreach (Transform t in rayLocations)
-					{
-						if (showRayDebugLines)
-							Debug.DrawLine(t.position, t.position + (direction * maxRayDistance), Color.green);
-
-						if (Physics.Raycast(t.position, direction, out hit, maxRayDistance, ~ignoreRaycastLayer))
-						{
-							if (hitLocations[i].Hit.point == null || hit.distance < currentHitDistanceThisFrame)
-							{
-								currentDirectionRayHitThisFrame = true;
-								currentHitDistanceThisFrame = hit.distance;
-								hitLocations[i].Hit = hit;
-								hitLocations[i].debugMarker.position = hit.point;
-							}
-						}
-					}
-
-					if (!currentDirectionRayHitThisFrame)
+					if (shortestDistanceHitThisFrame == null)
 					{
 						hitLocations[i].Active = false;
 						uIMarkers[i].SetMarkerAlpha(0f);
-
-						if (showHitSpheres)
-							hitLocations[i].debugMarker.gameObject.SetActive(false);
-
 					}
 					else
 					{
 						hitLocations[i].Active = true;
-						uIMarkers[i].SetMarkerAlpha(1 - (hitLocations[i].Hit.distance / maxRayDistance));
-
-						if (showHitSpheres)
-							hitLocations[i].debugMarker.gameObject.SetActive(true);
+						uIMarkers[i].SetMarkerAlpha(1 - ((float)shortestDistanceHitThisFrame / maxRayDistance));
 					}
 				}
 			}
 
 			yield return null;
 		}
+	}
+
+	private float? CastRaysForDirection(int rayIndex, Vector3 direction)
+	{
+		float? shortestDistanceHit = null;
+
+		foreach (Transform t in rayLocations)
+		{
+			RaycastHit? hit = CastRay(t, direction);
+
+			if (hit != null && (shortestDistanceHit == null || ((RaycastHit)hit).distance < shortestDistanceHit))
+			{
+				shortestDistanceHit = ((RaycastHit)hit).distance;
+				hitLocations[rayIndex].Hit = ((RaycastHit)hit);
+			}
+		}
+
+		return shortestDistanceHit;
+	}
+
+	private RaycastHit? CastRay(Transform t, Vector3 direction)
+	{
+		RaycastHit hit;
+
+		if (showRayDebugLines)
+			Debug.DrawLine(t.position, t.position + (direction * maxRayDistance), Color.green);
+
+		if (Physics.Raycast(t.position, direction, out hit, maxRayDistance, ~ignoreRaycastLayer))
+		{
+			return hit;
+		}
+
+		return null;
 	}
 }
