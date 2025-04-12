@@ -17,7 +17,7 @@ public class EchoLocator : MonoBehaviour
 	private int amountOfRays = 32;
 
 	[SerializeField]
-	private GameObject UIMarkerPrefab;
+	private GameObject uIMarkerPrefab;
 
 	[SerializeField]
 	private float maxRayDistance = 20f;
@@ -31,8 +31,7 @@ public class EchoLocator : MonoBehaviour
 	public bool castTheRays = true;
 	public bool showRayDebugLines = true;
 
-	private RaycastDirection[] hitLocations;
-	private float[] anglesToRaycast;
+	private RaycastDirection[] raycastDirections;
 
 	private void Start()
 	{
@@ -42,25 +41,28 @@ public class EchoLocator : MonoBehaviour
 		StartCoroutine(RayCastInAllDirections());
 	}
 
+	private void OnDestroy()
+	{
+		StopAllCoroutines();
+	}
+
 	/// <summary>
 	/// Initializes the hit locations and their corresponding UI markers.
 	/// </summary>
 	private void Initialize()
 	{
-		hitLocations = new RaycastDirection[amountOfRays];
+		raycastDirections = new RaycastDirection[amountOfRays];
 
-		for (int i = 0; i < hitLocations.Length; i++)
+		for (int i = 0; i < raycastDirections.Length; i++)
 		{
 			float angle = i * (360f / amountOfRays);
 
-			RaycastDirection hitLocation = new RaycastDirection
+			raycastDirections[i] = new RaycastDirection
 			{
 				Angle = angle,
 				Hit = new RaycastHit(),
 				UIMarker = GenerateUIMarker(angle)
 			};
-
-			hitLocations[i] = hitLocation;
 		}
 	}
 
@@ -71,7 +73,7 @@ public class EchoLocator : MonoBehaviour
 	/// <returns>The generated UI marker.</returns>  
 	private UIMarker GenerateUIMarker(float angle)
 	{
-		GameObject uIMarkerGameObject = Instantiate(UIMarkerPrefab, Vector3.zero, Quaternion.identity);
+		GameObject uIMarkerGameObject = Instantiate(uIMarkerPrefab, Vector3.zero, Quaternion.identity);
 		uIMarkerGameObject.transform.SetParent(transform);
 
 		Vector3 direction = Quaternion.Euler(0, 0, -angle) * transform.up;
@@ -103,12 +105,12 @@ public class EchoLocator : MonoBehaviour
 				for (int i = 0; i < amountOfRays; i++)
 				{
 					// Calculate the correct direction based on where player is currently facing
-					Vector3 direction = Quaternion.Euler(0, hitLocations[i].Angle, 0) * playerTransform.forward;
+					Vector3 direction = Quaternion.Euler(0, raycastDirections[i].Angle, 0) * playerTransform.forward;
 
 					// Get the shortest from x amount of rays from same direction but different height
 					float shortestDistanceHitThisFrame = CastRaysForDirection(i, direction);
 
-					// If -1 then none of the rays hit anything, otherwise we set the marker alpha based on the distance / max possible distance
+					// If -1 then none of the rays hit anything set to alpha 0, otherwise we set the marker alpha based on the distance / max possible distance
 					SetMarkerAlpha(i, shortestDistanceHitThisFrame == -1 ? 0f : 1 - (shortestDistanceHitThisFrame / maxRayDistance));
 				}
 			}
@@ -124,7 +126,7 @@ public class EchoLocator : MonoBehaviour
 	/// <param name="alphaValue"></param>
 	private void SetMarkerAlpha(int index, float alphaValue)
 	{
-		hitLocations[index].UIMarker.SetMarkerAlpha(alphaValue);
+		raycastDirections[index].UIMarker.SetMarkerAlpha(alphaValue);
 	}
 
 	/// <summary>
@@ -152,7 +154,7 @@ public class EchoLocator : MonoBehaviour
 				if (shortestDistanceHit == -1 || hit.distance < shortestDistanceHit)
 				{
 					shortestDistanceHit = hit.distance;
-					hitLocations[index].Hit = hit;
+					raycastDirections[index].Hit = hit;
 				}
 			}
 		}
