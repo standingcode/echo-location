@@ -1,10 +1,11 @@
 using System.Collections;
 using UnityEngine;
 
-public struct HitLocation
+public struct RaycastDirection
 {
-	public bool? Active;
+	public float Angle;
 	public RaycastHit Hit;
+	public UIMarker UIMarker;
 }
 
 public class EchoLocator : MonoBehaviour
@@ -30,61 +31,69 @@ public class EchoLocator : MonoBehaviour
 	public bool castTheRays = true;
 	public bool showRayDebugLines = true;
 
-	private HitLocation[] hitLocations;
-	private UIMarker[] uIMarkers;
+	private RaycastDirection[] hitLocations;
+	private float[] anglesToRaycast;
 
 	private void Start()
 	{
-		InitialiseHitLocations();
-		GenerateUI();
+		Initialize();
 
 		// Start the coroutine
 		StartCoroutine(RayCastInAllDirections());
 	}
 
-	private void InitialiseHitLocations()
+	/// <summary>
+	/// Initializes the hit locations and their corresponding UI markers.
+	/// </summary>
+	private void Initialize()
 	{
-		hitLocations = new HitLocation[amountOfRays];
+		hitLocations = new RaycastDirection[amountOfRays];
 
 		for (int i = 0; i < hitLocations.Length; i++)
 		{
-			HitLocation hitLocation = new HitLocation
+			float angle = i * (360f / amountOfRays);
+
+			RaycastDirection hitLocation = new RaycastDirection
 			{
-				Active = false,
+				Angle = angle,
 				Hit = new RaycastHit(),
+				UIMarker = GenerateUIMarker(angle)
 			};
 
 			hitLocations[i] = hitLocation;
 		}
 	}
 
-	private void GenerateUI()
-	{
-		uIMarkers = new UIMarker[amountOfRays];
-
-		// Instantiate a ui object and add as a child to this transform
-		for (int i = 0; i < hitLocations.Length; i++)
-		{
-			GenerateUIMarker(i);
-		}
-	}
-
-	private void GenerateUIMarker(int i)
+	/// <summary>  
+	/// Generates a single UI marker at the relevant angle from the middle of the screen out towards the edge.  
+	/// </summary>  
+	/// <param name="angle">The angle in degrees at which the UI marker will be generated.</param>  
+	/// <returns>The generated UI marker.</returns>  
+	private UIMarker GenerateUIMarker(float angle)
 	{
 		GameObject uIMarkerGameObject = Instantiate(UIMarkerPrefab, Vector3.zero, Quaternion.identity);
 		uIMarkerGameObject.transform.SetParent(transform);
 
-		float angle = i * (360f / amountOfRays);
 		Vector3 direction = Quaternion.Euler(0, 0, -angle) * transform.up;
 
-		uIMarkerGameObject.transform.localPosition = ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
+		// Determine the actual position of the marker and place it
+		uIMarkerGameObject.transform.localPosition
+			= ((Screen.height / 2) - (uIMarkerGameObject.GetComponent<RectTransform>().rect.height / 2)) * direction;
 
+		// Get a reference to the UIMarker script from the newly created GameObject
 		UIMarker uIMarker = uIMarkerGameObject.GetComponent<UIMarker>();
+
+		// Initialize the marker's alpha value to hide as default
 		uIMarker.SetMarkerAlpha(0f);
 
-		uIMarkers[i] = uIMarker;
+		return uIMarker;
 	}
 
+	/// <summary>
+	/// The coroutine method which loops through all of the ray locations 
+	/// and for each direction calls another method to cast rays for different heights
+	/// </summary>
+	/// <returns></returns>
 	private IEnumerator RayCastInAllDirections()
 	{
 		while (true)
@@ -93,21 +102,14 @@ public class EchoLocator : MonoBehaviour
 			{
 				for (int i = 0; i < amountOfRays; i++)
 				{
-					float angle = i * (360f / amountOfRays);
-					Vector3 direction = Quaternion.Euler(0, angle, 0) * playerTransform.forward;
+					// Calculate the correct direction based on where player is currently facing
+					Vector3 direction = Quaternion.Euler(0, hitLocations[i].Angle, 0) * playerTransform.forward;
 
-					float? shortestDistanceHitThisFrame = CastRaysForDirection(i, direction);
+					// Get the shortest from x amount of rays from same direction but different height
+					float shortestDistanceHitThisFrame = CastRaysForDirection(i, direction);
 
-					if (shortestDistanceHitThisFrame == null)
-					{
-						hitLocations[i].Active = false;
-						uIMarkers[i].SetMarkerAlpha(0f);
-					}
-					else
-					{
-						hitLocations[i].Active = true;
-						uIMarkers[i].SetMarkerAlpha(1 - ((float)shortestDistanceHitThisFrame / maxRayDistance));
-					}
+					// If -1 then none of the rays hit anything, otherwise we set the marker alpha based on the distance / max possible distance
+					SetMarkerAlpha(i, shortestDistanceHitThisFrame == -1 ? 0f : 1 - (shortestDistanceHitThisFrame / maxRayDistance));
 				}
 			}
 
@@ -115,24 +117,56 @@ public class EchoLocator : MonoBehaviour
 		}
 	}
 
-	private float? CastRaysForDirection(int rayIndex, Vector3 direction)
+	/// <summary>
+	/// Sets the alpha value of the UI marker at the specified index.
+	/// </summary>
+	/// <param name="index"></param>
+	/// <param name="alphaValue"></param>
+	private void SetMarkerAlpha(int index, float alphaValue)
 	{
-		float? shortestDistanceHit = null;
+		hitLocations[index].UIMarker.SetMarkerAlpha(alphaValue);
+	}
 
+	/// <summary>
+	/// Casts rays in one direction, but for different heights. The heights to raycast are stored as array of transforms
+	/// </summary>
+	/// <param name="index"></param>
+	/// <param name="direction"></param>
+	/// <returns></returns>
+	private float CastRaysForDirection(int index, Vector3 direction)
+	{
+		float shortestDistanceHit = -1;
+
+		// For each of the heights
 		foreach (Transform t in rayLocations)
 		{
-			RaycastHit? hit = CastRay(t, direction);
+			RaycastHit? returnedHit = CastRay(t, direction);
 
-			if (hit != null && (shortestDistanceHit == null || ((RaycastHit)hit).distance < shortestDistanceHit))
+			// If the ray actually hit something
+			if (returnedHit != null)
 			{
-				shortestDistanceHit = ((RaycastHit)hit).distance;
-				hitLocations[rayIndex].Hit = ((RaycastHit)hit);
+				RaycastHit hit = (RaycastHit)returnedHit;
+
+				// If none of the other rays so far have hit anything, we can just set this as shortest,
+				// otherwise we check if this hit is shorter than the previous one
+				if (shortestDistanceHit == -1 || hit.distance < shortestDistanceHit)
+				{
+					shortestDistanceHit = hit.distance;
+					hitLocations[index].Hit = hit;
+				}
 			}
 		}
 
 		return shortestDistanceHit;
 	}
 
+	/// <summary>
+	/// Cast a single ray, return null if the ray did not hit anything
+	/// The debug lines are drawn within this method.
+	/// </summary>
+	/// <param name="t"></param>
+	/// <param name="direction"></param>
+	/// <returns></returns>
 	private RaycastHit? CastRay(Transform t, Vector3 direction)
 	{
 		RaycastHit hit;
